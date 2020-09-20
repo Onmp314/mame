@@ -34992,8 +34992,8 @@ px8                             //
 pyl601                          //
 pyl601a                         //
 
-@source:pyson.cpp
-pyson                           // Konami Pyson Bios
+@source:python.cpp
+python                           // Konami Python Bios
 wswe                            // World Soccer Winning Eleven
 wswe2k3                         // World Soccer Winning Eleven 2003
 
