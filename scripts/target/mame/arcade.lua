@@ -2565,7 +2565,7 @@ files {
 	MAME_DIR .. "src/mame/drivers/pooyan.cpp",
 	MAME_DIR .. "src/mame/includes/pooyan.h",
 	MAME_DIR .. "src/mame/video/pooyan.cpp",
-	MAME_DIR .. "src/mame/drivers/pyson.cpp",
+	MAME_DIR .. "src/mame/drivers/python.cpp",
 	MAME_DIR .. "src/mame/drivers/qdrmfgp.cpp",
 	MAME_DIR .. "src/mame/includes/qdrmfgp.h",
 	MAME_DIR .. "src/mame/video/qdrmfgp.cpp",
