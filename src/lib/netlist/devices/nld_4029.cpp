@@ -146,14 +146,14 @@ namespace devices
 		, m_CLK(*this, "CLK", NETLIB_DELEGATE(clk))
 		, m_clk_old(*this, "m_clk_old", false)
 		, m_Q(*this, {"Q1", "Q2", "Q3", "Q4"})
-		, m_CO(*this, "CO", 0)
+		, m_CO(*this, "CO", false)
 		, m_cnt(*this, "m_cnt", 0)
 		, m_power_pins(*this)
 		{
 		}
 
 	private:
-		inline NETLIB_HANDLERI(inputs) // pe causes an asynchronous counter load on level so has to be handled separately; if pe is high, then J changing will asynchronously change the Q state. changing J in this state does affect CO as well; CI will affect CO asynchronously if there is currently a carry
+		NETLIB_HANDLERI(inputs) // pe causes an asynchronous counter load on level so has to be handled separately; if pe is high, then J changing will asynchronously change the Q state. changing J in this state does affect CO as well; CI will affect CO asynchronously if there is currently a carry
 		{
 			if (m_PE())
 			{
@@ -178,7 +178,7 @@ namespace devices
 			}
 		}
 
-		inline NETLIB_HANDLERI(clk)
+		NETLIB_HANDLERI(clk)
 		{
 			// clocking only happens if m_clk_old was low, m_CLK is high, m_PE is NOT high, and m_CI is NOT high.
 			if (!m_PE() && !m_CI() && !m_clk_old && m_CLK())

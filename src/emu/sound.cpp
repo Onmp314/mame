@@ -88,9 +88,9 @@ void stream_buffer::set_sample_rate(u32 rate, bool resample)
 	if (rate == m_sample_rate)
 		return;
 
-	// force resampling off if coming to or from an invalid rate
+	// force resampling off if coming to or from an invalid rate, or if we're at time 0 (startup)
 	sound_assert(rate >= SAMPLE_RATE_MINIMUM - 1);
-	if (rate < SAMPLE_RATE_MINIMUM || m_sample_rate < SAMPLE_RATE_MINIMUM)
+	if (rate < SAMPLE_RATE_MINIMUM || m_sample_rate < SAMPLE_RATE_MINIMUM || (m_end_second == 0 && m_end_sample == 0))
 		resample = false;
 
 	// note the time and period of the current buffer (end_time is AFTER the final sample)
@@ -123,7 +123,14 @@ void stream_buffer::set_sample_rate(u32 rate, bool resample)
 			for (int index = 0; index < buffered_samples; index++)
 			{
 				end = prev_index(end);
-				buffer[index] = get(end);
+#if (SOUND_DEBUG)
+				// multiple resamples can occur before clearing out old NaNs so
+				// neuter them for this specific case
+				if (std::isnan(m_buffer[end]))
+					buffer[index] = 0;
+				else
+#endif
+					buffer[index] = get(end);
 			}
 		}
 	}
@@ -386,7 +393,7 @@ void sound_stream_output::init(sound_stream &stream, u32 index, char const *tag)
 
 #if (LOG_OUTPUT_WAV)
 	std::string filename = stream.device().machine().basename();
-	filename +=	stream.device().tag();
+	filename += stream.device().tag();
 	for (int index = 0; index < filename.size(); index++)
 		if (filename[index] == ':')
 			filename[index] = '_';
@@ -571,12 +578,10 @@ sound_stream::sound_stream(device_t &device, u32 inputs, u32 outputs, u32 output
 	m_resampling_disabled((flags & STREAM_DISABLE_INPUT_RESAMPLING) != 0),
 	m_sync_timer(nullptr),
 	m_input(inputs),
-	m_input_array(inputs),
 	m_input_view(inputs),
 	m_empty_buffer(100),
 	m_output_base(output_base),
 	m_output(outputs),
-	m_output_array(outputs),
 	m_output_view(outputs)
 {
 	sound_assert(outputs > 0);
@@ -621,21 +626,7 @@ sound_stream::sound_stream(device_t &device, u32 inputs, u32 outputs, u32 output
 
 
 //-------------------------------------------------
-//  sound_stream - constructor with old-style
-//  callback
-//-------------------------------------------------
-
-sound_stream::sound_stream(device_t &device, u32 inputs, u32 outputs, u32 output_base, u32 sample_rate, stream_update_legacy_delegate callback, sound_stream_flags flags) :
-	sound_stream(device, inputs, outputs, output_base, sample_rate, flags)
-{
-	m_callback = std::move(callback);
-	m_callback_ex = stream_update_delegate(&sound_stream::stream_update_legacy, this);
-}
-
-
-//-------------------------------------------------
-//  sound_stream - constructor with new-style
-//  callback
+//  sound_stream - constructor
 //-------------------------------------------------
 
 sound_stream::sound_stream(device_t &device, u32 inputs, u32 outputs, u32 output_base, u32 sample_rate, stream_update_delegate callback, sound_stream_flags flags) :
@@ -840,7 +831,7 @@ void sound_stream::apply_sample_rate_changes(u32 updatenum, u32 downstream_rate)
 #if (SOUND_DEBUG)
 void sound_stream::print_graph_recursive(int indent, int index)
 {
-	osd_printf_info("%c %*s%s Ch.%d @ %d\n", m_callback.isnull() ? ' ' : '!', indent, "", name().c_str(), index + m_output_base, sample_rate());
+	osd_printf_info("%*s%s Ch.%d @ %d\n", indent, "", name().c_str(), index + m_output_base, sample_rate());
 	for (int index = 0; index < m_input.size(); index++)
 		if (m_input[index].valid())
 		{
@@ -913,57 +904,6 @@ void sound_stream::sync_update(void *, s32)
 {
 	update();
 	reprime_sync_timer();
-}
-
-
-//-------------------------------------------------
-//  stream_update_legacy - new-style callback which
-//  forwards on to the old-style traditional
-//  callback, converting to/from floats
-//-------------------------------------------------
-
-void sound_stream::stream_update_legacy(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs)
-{
-	// temporary buffer to hold stream_sample_t inputs and outputs
-	stream_sample_t temp_buffer[1024];
-	int chunksize = ARRAY_LENGTH(temp_buffer) / (inputs.size() + outputs.size());
-	int chunknum = 0;
-
-	// create the arrays to pass to the callback
-	stream_sample_t **inputptr = m_input.empty() ? nullptr : &m_input_array[0];
-	stream_sample_t **outputptr = &m_output_array[0];
-	for (unsigned int inputnum = 0; inputnum < inputs.size(); inputnum++)
-		inputptr[inputnum] = &temp_buffer[chunksize * chunknum++];
-	for (unsigned int outputnum = 0; outputnum < m_output.size(); outputnum++)
-		outputptr[outputnum] = &temp_buffer[chunksize * chunknum++];
-
-	// loop until all chunks done
-	for (int baseindex = 0; baseindex < outputs[0].samples(); baseindex += chunksize)
-	{
-		// determine the number of samples to process this time
-		int cursamples = outputs[0].samples() - baseindex;
-		if (cursamples > chunksize)
-			cursamples = chunksize;
-
-		// copy in the input data
-		for (unsigned int inputnum = 0; inputnum < inputs.size(); inputnum++)
-		{
-			stream_sample_t *dest = inputptr[inputnum];
-			for (int index = 0; index < cursamples; index++)
-				dest[index] = stream_sample_t(inputs[inputnum].get(baseindex + index) * stream_buffer::sample_t(32768.0));
-		}
-
-		// run the callback
-		m_callback(*this, inputptr, outputptr, cursamples);
-
-		// copy out the output data
-		for (unsigned int outputnum = 0; outputnum < m_output.size(); outputnum++)
-		{
-			stream_sample_t *src = outputptr[outputnum];
-			for (int index = 0; index < cursamples; index++)
-				outputs[outputnum].put(baseindex + index, stream_buffer::sample_t(src[index]) * stream_buffer::sample_t(1.0 / 32768.0));
-		}
-	}
 }
 
 
@@ -1074,6 +1014,7 @@ void default_resampler_stream::resampler_sound_update(sound_stream &stream, std:
 		for ( ; dstindex < numsamples; dstindex++)
 		{
 			// if still within the current sample, just replicate
+			srcpos += step;
 			if (srcpos <= 1.0)
 				output.put(dstindex, cursample);
 
@@ -1086,7 +1027,6 @@ void default_resampler_stream::resampler_sound_update(sound_stream &stream, std:
 				cursample = rebased.get(srcindex++);
 				output.put(dstindex, stepinv * (prevsample * (step - srcpos) + srcpos * cursample));
 			}
-			srcpos += step;
 		}
 		sound_assert(srcindex <= rebased.samples());
 	}
@@ -1189,23 +1129,6 @@ sound_manager::sound_manager(running_machine &machine) :
 
 sound_manager::~sound_manager()
 {
-}
-
-
-//-------------------------------------------------
-//  stream_alloc_legacy - allocate a new stream
-//-------------------------------------------------
-
-sound_stream *sound_manager::stream_alloc_legacy(device_t &device, u32 inputs, u32 outputs, u32 sample_rate, stream_update_legacy_delegate callback)
-{
-	// determine output base
-	u32 output_base = 0;
-	for (auto &stream : m_stream_list)
-		if (&stream->device() == &device)
-			output_base += stream->output_count();
-
-	m_stream_list.push_back(std::make_unique<sound_stream>(device, inputs, outputs, output_base, sample_rate, callback));
-	return m_stream_list.back().get();
 }
 
 

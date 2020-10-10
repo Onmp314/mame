@@ -35,7 +35,7 @@ protected:
 	virtual void device_post_load() override;
 	virtual void device_stop() override;
 
-	virtual void sound_stream_update_legacy(sound_stream &stream, stream_sample_t const * const *inputs, stream_sample_t * const *outputs, int samples) override;
+	virtual void sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs) override;
 
 	static constexpr float ms_to_rate(float ms) { return 1.0f / (ms * (float(spu_base_frequency_hz) / 1000.0f)); }
 	static constexpr float s_to_rate(float s) { return ms_to_rate(s * 1000.0f); }
@@ -49,7 +49,7 @@ protected:
 	// internal state
 	devcb_write_line m_irq_handler;
 
-	unsigned char *spu_ram;
+	std::unique_ptr<unsigned char []> spu_ram;
 	reverb *rev;
 	unsigned int taddr;
 	unsigned int sample_t;
@@ -73,13 +73,13 @@ protected:
 	bool status_enabled, xa_playing, cdda_playing;
 	int xa_voll, xa_volr, changed_xa_vol;
 	voiceinfo *voice;
-	sample_cache **cache;
+	std::unique_ptr<sample_cache * []> cache;
 	float samples_per_frame;
 	float samples_per_cycle;
 
 	static float freq_multiplier;
 
-	unsigned char *output_buf[4];
+	std::unique_ptr<unsigned char []> output_buf[4];
 	unsigned int output_head;
 	unsigned int output_tail;
 	unsigned int output_size;

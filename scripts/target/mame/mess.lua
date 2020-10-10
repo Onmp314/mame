@@ -779,6 +779,9 @@ MACHINES["XC1700E"] = true
 MACHINES["EDLC"] = true
 MACHINES["WTL3132"] = true
 MACHINES["CXD1185"] = true
+MACHINES["BL_HANDHELDS_MENUCONTROL"] = true
+MACHINES["NS32081"] = true
+MACHINES["NS32202"] = true
 
 --------------------------------------------------
 -- specify available bus cores
@@ -839,6 +842,7 @@ BUSES["ELECTRON"] = true
 BUSES["ELECTRON_CART"] = true
 BUSES["EP64"] = true
 BUSES["EPSON_SIO"] = true
+BUSES["FMT_SCSI"] = true
 BUSES["GAMATE"] = true
 BUSES["GAMEBOY"] = true
 BUSES["GAMEGEAR"] = true
@@ -1167,6 +1171,7 @@ function linkProjects_mame_mess(_target, _subtarget)
 		"cccp",
 		"cce",
 		"ccs",
+		"ceres",
 		"chessking",
 		"chromatics",
 		"chrysler",
@@ -1747,6 +1752,7 @@ files {
 	MAME_DIR .. "src/mame/machine/lisa.cpp",
 	MAME_DIR .. "src/mame/drivers/lwriter.cpp",
 	MAME_DIR .. "src/mame/drivers/mac128.cpp",
+	MAME_DIR .. "src/mame/drivers/macquadra700.cpp",
 	MAME_DIR .. "src/mame/drivers/mac.cpp",
 	MAME_DIR .. "src/mame/includes/mac.h",
 	MAME_DIR .. "src/mame/machine/egret.cpp",
@@ -1862,10 +1868,8 @@ files {
 	MAME_DIR .. "src/mame/drivers/rx78.cpp",
 	MAME_DIR .. "src/mame/drivers/tamag1.cpp",
 	MAME_DIR .. "src/mame/drivers/wswan.cpp",
-	MAME_DIR .. "src/mame/includes/wswan.h",
 	MAME_DIR .. "src/mame/audio/wswan.cpp",
 	MAME_DIR .. "src/mame/audio/wswan.h",
-	MAME_DIR .. "src/mame/machine/wswan.cpp",
 	MAME_DIR .. "src/mame/video/wswan.cpp",
 	MAME_DIR .. "src/mame/video/wswan.h",
 	MAME_DIR .. "src/mame/drivers/bandai_design_master.cpp",
@@ -2016,6 +2020,11 @@ files {
 createMESSProjects(_target, _subtarget, "ccs")
 files {
 	MAME_DIR .. "src/mame/drivers/ccs2810.cpp",
+}
+
+createMESSProjects(_target, _subtarget, "ceres")
+files {
+	MAME_DIR .. "src/mame/drivers/ceres.cpp",
 }
 
 createMESSProjects(_target, _subtarget, "chessking")
@@ -2609,6 +2618,8 @@ files {
 	MAME_DIR .. "src/mame/drivers/informer_213.cpp",
 	MAME_DIR .. "src/mame/machine/informer_207_376_kbd.cpp",
 	MAME_DIR .. "src/mame/machine/informer_207_376_kbd.h",
+	MAME_DIR .. "src/mame/machine/informer_213_kbd.cpp",
+	MAME_DIR .. "src/mame/machine/informer_213_kbd.h",
 }
 
 createMESSProjects(_target, _subtarget, "intel")
@@ -4024,6 +4035,7 @@ files {
 	MAME_DIR .. "src/mame/machine/generalplus_gpl16250.cpp",
 	MAME_DIR .. "src/mame/machine/generalplus_gpl16250.h",
 	MAME_DIR .. "src/mame/drivers/generalplus_gpl32612.cpp",
+	MAME_DIR .. "src/mame/drivers/generalplus_gpl162xx_lcdtype.cpp",
 	MAME_DIR .. "src/mame/drivers/generalplus_gpl_unknown.cpp",
 	MAME_DIR .. "src/mame/drivers/xavix.cpp",
 	MAME_DIR .. "src/mame/includes/xavix.h",
@@ -4281,6 +4293,7 @@ files {
 	MAME_DIR .. "src/mame/drivers/aaa.cpp",
 	MAME_DIR .. "src/mame/drivers/acd.cpp",
 	MAME_DIR .. "src/mame/drivers/aceex.cpp",
+	MAME_DIR .. "src/mame/drivers/adacp150.cpp",
 	MAME_DIR .. "src/mame/drivers/aid80f.cpp",
 	MAME_DIR .. "src/mame/drivers/akaiax80.cpp",
 	MAME_DIR .. "src/mame/drivers/alcat7100.cpp",

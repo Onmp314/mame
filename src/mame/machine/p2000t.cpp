@@ -44,19 +44,19 @@
 */
 uint8_t p2000t_state::p2000t_port_000f_r(offs_t offset)
 {
-    if (m_port_101f & P2000M_101F_KEYINT)
-    {
-        return (m_keyboard[0]->read() & m_keyboard[1]->read() & m_keyboard[2]->read()
-                & m_keyboard[3]->read() & m_keyboard[4]->read() & m_keyboard[5]->read()
-                & m_keyboard[6]->read() & m_keyboard[7]->read() & m_keyboard[8]->read()
-                & m_keyboard[9]->read());
-    }
-    else if (offset < 10)
-    {
-        return m_keyboard[offset]->read();
-    }
-    else
-        return 0xff;
+	if (m_port_101f & P2000M_101F_KEYINT)
+	{
+		return (m_keyboard[0]->read() & m_keyboard[1]->read() & m_keyboard[2]->read()
+				& m_keyboard[3]->read() & m_keyboard[4]->read() & m_keyboard[5]->read()
+				& m_keyboard[6]->read() & m_keyboard[7]->read() & m_keyboard[8]->read()
+				& m_keyboard[9]->read());
+	}
+	else if (offset < 10)
+	{
+		return m_keyboard[offset]->read();
+	}
+	else
+		return 0xff;
 }
 
 /*
@@ -75,13 +75,13 @@ uint8_t p2000t_state::p2000t_port_000f_r(offs_t offset)
 */
 uint8_t p2000t_state::p2000t_port_202f_r()
 {
-    uint8_t data = 0x00;
-    data |= !m_mdcr->wen() << 3;
-    data |= !m_mdcr->cip() << 4;
-    data |= !m_mdcr->bet() << 5;
-    data |= m_mdcr->rdc() << 6;
-    data |= !m_mdcr->rda() << 7;
-    return data;
+	uint8_t data = 0x00;
+	data |= !m_mdcr->wen() << 3;
+	data |= !m_mdcr->cip() << 4;
+	data |= !m_mdcr->bet() << 5;
+	data |= m_mdcr->rdc() << 6;
+	data |= !m_mdcr->rda() << 7;
+	return data;
 }
 
 
@@ -99,11 +99,11 @@ uint8_t p2000t_state::p2000t_port_202f_r()
 */
 void p2000t_state::p2000t_port_101f_w(uint8_t data)
 {
-    m_port_101f = data;
-    m_mdcr->wda(BIT(data, 0));
-    m_mdcr->wdc(BIT(data, 1));
-    m_mdcr->rev(BIT(data, 2));
-    m_mdcr->fwd(BIT(data, 3));
+	m_port_101f = data;
+	m_mdcr->wda(BIT(data, 0));
+	m_mdcr->wdc(BIT(data, 1));
+	m_mdcr->rev(BIT(data, 2));
+	m_mdcr->fwd(BIT(data, 3));
 }
 
 /*
@@ -154,4 +154,32 @@ void p2000t_state::p2000t_port_707f_w(uint8_t data) { m_port_707f = data; }
 
 void p2000t_state::p2000t_port_888b_w(uint8_t data) {}
 void p2000t_state::p2000t_port_8c90_w(uint8_t data) {}
-void p2000t_state::p2000t_port_9494_w(uint8_t data) {}
+
+
+void p2000t_state::p2000t_port_9494_w(uint8_t data) {
+	//  The memory region E000-FFFF (8k) is bank switched
+	int available_banks = (m_ram->size() - 0xe000) / 0x2000;
+	if (data < available_banks)
+		m_bank->set_entry(data);
+}
+
+void p2000t_state::machine_start()
+{
+		auto program = &m_maincpu->space(AS_PROGRAM);
+		auto ramsize = m_ram->size();
+		switch(ramsize) {
+			case 0x4000: // 16kb
+				program->unmap_readwrite(0xa000, 0xffff);
+				break;
+			case 0x8000: // 32kb
+				program->unmap_readwrite(0xe000, 0xffff);
+				break;
+			default: // more.. (48kb, 64kb, 102kb)
+				// In this case we have a set of 8kb memory banks.
+				uint8_t *ram = m_ram->pointer();
+				auto available_banks = (ramsize - 0xe000) / 0x2000;
+				for(int i = 0; i < available_banks; i++)
+					m_bank->configure_entry(i, ram + (i * 0x2000));
+				break;
+		}
+}
